@@ -118,7 +118,8 @@ representing images and words in higher-level representations.
 [karpathy2015deep-portal]:   https://scholar.google.com/scholar?hl=fr&as_sdt=0%2C5&q=Deep+Visual-Semantic+Alignments+for+Generating+Image+Descriptions&btnG= 
 [karpathy2015deep]:          https://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Karpathy_Deep_Visual-Semantic_Alignments_2015_CVPR_paper.pdf 
 [karpathy2015deep-blog]:     https://cs.stanford.edu/people/karpathy/deepimagesent/ 
-[karpathy2015deep-code]:     https://github.com/karpathy/neuraltalk 
+[karpathy2015deep-code]:     https://github.com/karpathy/neuraltalk2
+[karpathy2015deep-codedep]:  https://github.com/karpathy/neuraltalk
 [karpathy2015deep-tmpvideo]: https://www.youtube.com/watch?v=e-WB4lfg30M
 
 <!-- all the references from the paper -->
