@@ -1,19 +1,65 @@
-##   1.     Introduction
+##   1.     Introduction (00 min)
 ###  1.1.   A brief overview on image captioning
+  A quick glance at an image is sufficient for a human to
+point out and describe an immense amount of details about
+the visual scene [14]. However, this remarkable ability has
+proven to be an elusive task for our visual recognition
+models. The majority of previous work in visual recognition
+has focused on labeling images with a fixed set of visual
+categories and great progress has been achieved in these
+endeavors [45, 11]. However, while closed vocabularies of
+visual concepts constitute a convenient modeling assumption,
+they are vastly restrictive when compared to the enormous
+amount of rich descriptions that a human can compose.
+
+  Some pioneering approaches that address the challenge of
+generating image descriptions have been developed [29,
+13]. However, these models often rely on hard-coded visual
+concepts and sentence templates, which imposes limits on
+their variety. Moreover, the focus of these works has been
+on reducing complex visual scenes into a single sentence,
+which we consider to be an unnecessary restriction.
+
+  In this work, we strive to take a step towards the goal of
+generating dense descriptions of images (Figure 1). The
+primary challenge towards this goal is in the design of a
+model that is rich enough to simultaneously reason about
+contents of images and their representation in the domain
+of natural language. Additionally, the model should be free
+of assumptions about specific hard-coded templates, rules
+or categories and instead rely on learning from the training
+data. The second, practical challenge is that datasets of
+image captions are available in large quantities on the internet
+[21, 58, 37], but these descriptions multiplex mentions of
+several entities whose locations in the images are unknown.
+
 The idea is to do the following.  
-<img src="figure-1.png" height=300>
+<img src="res/figure-1.png" height=200>
+
+In this document, the focus is put on a very old 2015 paper
+[Deep Visual-Semantic Alignments for Generating Image Descriptions][karpathy2015deep] from Andrej Karpathy and Li Fei-Fei.
 
 ###  1.2.   The notebook
-This notebook is organised as follows:
-- ...
-- ...
+This notebook is a work in the Decision Making & Data Science (SDD)
+class at ISAE-Supaero. The goal in to explain to other students,
+professors and more generally any person having a basic background
+in Machine Learning (ML), through a notebook designed to be played
+in around an hour.
 
-Throughout the cells, one will find some external links to external resources, mainly code snippets or blog posts putting results forward.  
-As this notebook has been time with the help of scientific people but not ML-experts, some time anchors are being given to the reader as
-indication only.
+This notebook is organised as follows:
+- a dive into the theory of the paper.
+- more implementation details.
+- a focus on the results and online tools to caption images.
+
+Throughout the cells, one will find some external links to external
+resources, mainly code snippets or blog posts putting results forward.  
+
+This notebook has been timed with the help of people with basic
+algorithmic and ML knowledges but not ML-experts, thus some time
+anchors are being given to the reader as indication only.
 
 ###  1.3.   Some resources
-Deep Visual-Semantic Alignments for Generating Image Descriptions:
+One can find the list of the major resources used to write this notebook below:
 - the [scholar portal][karpathy2015deep-portal] and the [paper][karpathy2015deep].
 - the [standford post][karpathy2015deep-blog].
 - the [code][karpathy2015deep-code].
@@ -22,41 +68,59 @@ Deep Visual-Semantic Alignments for Generating Image Descriptions:
 - a short [explanatory video][karpathy2015deep-tmpvideo].
 
 ###  1.4.   A few disclaimers
-Before diving into the paper and image captioning, some disclaimers have to be maid for the reader not to be disappointed nor surprised.  
-None of the codes listed above appears to work nowadays. Compilation issues arise with the original `lua` code both on local machine and
-on Google Colab servers. The docker container does not produce any results which is not very helpful. And finally the most recent `python`
-implementation is old enough to be written in `python` 2.7 for which there is no more support and libraries do not install very well.
+Before diving into the paper and image captioning, some disclaimers
+have to be maid for the reader not to be disappointed nor surprised.
 
+None of the codes listed above appears to work nowadays. Compilation
+issues arise with the original `lua` code both on local machine and
+on Google Colab servers. The docker container does not produce any
+results which is not very helpful. And finally the most recent `python`
+implementation is old enough to be written in `python` 2.7 for which
+there is no more support and libraries do not install very well.
 
-
-##   2.     The paper
-###  2.1.   Introduction
+##   2.     The paper (00 min)
+###  2.1.   Introduction (00 min)
 #### Abstract
-We present a model that generates natural language descriptions of images and their regions. Our approach leverages datasets of images and their sentence descriptions to
-learn about the inter-modal correspondences between language and visual data. Our alignment model is based on a
-novel combination of Convolutional Neural Networks over
+We present a model that generates natural language descriptions of
+images and their regions. Our approach leverages datasets of images
+and their sentence descriptions to learn about the inter-modal
+correspondences between language and visual data. Our alignment model
+is based on a novel combination of Convolutional Neural Networks over
 image regions, bidirectional Recurrent Neural Networks
 over sentences, and a structured objective that aligns the
 two modalities through a multimodal embedding. We then
-describe a Multimodal Recurrent Neural Network architecture that uses the inferred alignments to learn to generate
+describe a Multimodal Recurrent Neural Network architecture that
+uses the inferred alignments to learn to generate
 novel descriptions of image regions. We demonstrate that
-our alignment model produces state of the art results in retrieval experiments on Flickr8K, Flickr30K and MSCOCO
-datasets. We then show that the generated descriptions significantly outperform retrieval baselines on both full images
-and on a new dataset of region-level annotations.
+our alignment model produces state of the art results in retrieval
+experiments on Flickr8K, Flickr30K and MSCOCO datasets. We then
+show that the generated descriptions significantly outperform
+retrieval baselines on both full images and on a new dataset of
+region-level annotations.
 
 #### Introduction
-The contributions:  
-• We develop a deep neural network model that infers the latent alignment between segments of sentences and the region of the image that they describe.
-  Our model associates the two modalities through a
-  common, multimodal embedding space and a structured objective. We validate the effectiveness of this
-  approach on image-sentence retrieval experiments in
-  which we surpass the state-of-the-art.
-• We introduce a multimodal Recurrent Neural Network
+  Our core insight is that we can leverage these large
+image-sentence datasets by treating the sentences as weak
+labels, in which contiguous segments of words correspond to
+some particular, but unknown location in the image. Our approach
+is to infer these alignments and use them to learn a generative
+model of descriptions. Concretely, our contributions are twofold
+
+The contributions:
+- We develop a deep neural network model that infers the latent
+  alignment between segments of sentences and the region of the
+  image that they describe. Our model associates the two modalities
+  through a common, multimodal embedding space and a structured
+  objective. We validate the effectiveness of this approach on
+  image-sentence retrieval experiments in which we surpass
+  the state-of-the-art.
+- We introduce a multimodal Recurrent Neural Network
   architecture that takes an input image and generates
   its description in text. Our experiments show that the
-  generated sentences significantly outperform retrieval-based baselines, and produce sensible qualitative predictions. We then train the model on the inferred correspondences and evaluate
-  its performance on a new
-  dataset of region-level annotations.
+  generated sentences significantly outperform retrieval-based
+  baselines, and produce sensible qualitative predictions. We
+  then train the model on the inferred correspondences and evaluate
+  its performance on a new dataset of region-level annotations.
 
 #### Related Work
 **Dense image annotations**.  
@@ -90,52 +154,121 @@ representing images and words in higher-level representations.
 [\[41\]][41] [\[22\]][22] [\[3\]][3] pretrained word vectors to obtain low-dimensional representations of words.  
 [\[40\]][40] [\[50\]][50] language modeling, but we additionally condition these models on images.  
 
-###  2.3.   Learning to align visual and language data
-Figure 2.  
-- key insight: "people make frequent references to some particular, but unknown location in the image."
-- build upon Karpathy et al. [24]: learn to ground dependency tree relations to image regions with a ranking objective.  
--> use of bidirectional RNN (BRNN) -> word representations.  
--> simplified objective.
+###  2.2.   Learning to align visual and language data (00 min)
+As stated above, we suppose in the following that we have access to huge datasets
+composed of image-sentence pairs, i.e. an image and sentences describing the
+elements in the image, in a natural language format.
 
-#### 2.3.1. Representing images
-- map images to 20 $h$-dimesional vectors, $\{v_i | i = 1, ..., 20\}$.
-- pre-trained Region CNN (RCNN) on ImageNet + finetuned on the top 200 classes of the ImageNet Detection Challenge.
-- 19 top regions + 1 for the whole image -> $\forall i \in [|1, 20|], v_i = W_m[CNN_{\theta}(I_{b_i})] + b_m$ (1)
-  - $W_m$: $h \times 4096$ dimensional matrix
-  - $CNN_{\theta}$: maps bounding boxes pixels to $4096$-dimensional vectors.
-  - $\theta$: 60 million parameters
+For instance, the authors use the Flickr8K, Flickr30K and MSCOCO datasets which are
+composed of exactly these pairs. I really do recommend playing with the
+[online image browser][coco] of Microsoft. It is a fun and powerful way to look at
+the dataset. We see that the items in the set are really only images and their caption
+sentences describing the objects.
 
-#### 2.3.2. Representing sentences: same $h$-dimensional embedding space
-- BRNN: 1-hot encoding of N words over an alphabet -> $h$-dimensional vector.
+Once we have the dataset and the problem -as a reminder, we would like to
+generate new captions for unseen images by using not only fixed-size descriptions
+allowing richer captioning- we need to sketch the overall pipeline of the future
+algorithm. This is summarized in the Figure 2 below.  
+<img src="res/figure-2.png" height=150>
+
+The key insight of this pipeline is that, according to the authors, "people make
+frequent references to some particular, but unknown location in the image." Thus
+one algorithm first need to infer from full sentences what part of the sentence
+are related to what part of the image, this is the "inferred correspondences".
+Once the algorithm has internalized this knowledge, we want it to put back snippets
+of captioning for sub-images to form a general description of the image.
+
+This first section focuses on the first  half of the process, i.e. going from whole
+sentence descriptions to inferred correspondences.
+
+#### 2.2.1. Representing images (00 min)
+First of all, we need to represent the images in some latent space. *Reminder: a latent
+space is generally a space of lower dimension containing a small amount of but
+hopefully enough information about the original data. Also referred to as an
+embedded space.*
+
+The idea is to map images from their very-high dimensional native spaces of images to
+20 $h$-dimensional vectors, ${v_i | i = 1, ..., 20}$. To achieve this embedding, we
+use a pre-trained Region Convolutional Neural Network (RCNN) trained on the ImageNet
+dataset and finetuned on the top 200 classes of the ImageNet Detection Challenge.
+
+Then, to construct the latent vectors, the authors used the top 19 classification regions
+plus an extra region for the whole image and the formula  
+$$\forall i \in [|1, 20|], v_i = W_m[CNN_{\theta}(I_{b_i})] + b_m$$ (1)
+Where:
+  - $W_m$ is a $h \times 4096$-dimensional learned weight matrix
+  - $CNN_{\theta}$ is a mapping from bounding boxes pixels in the image to $4096$-dimensional vectors.
+  - $\theta$ has 60 million parameters.
 ```
-                                                                    +--------------------------------+
-                                                               .--->| f(e_t + W_b x h_{t+1}^b + b_b) |--> h_t^b --.
-      +-----------+          +--------------------+           /     +--------------------------------+             \    +-----------------------------+
-1_t --| W_m * 1_t |--> x_t --| f(W_e * x_t + b_e) |--> e_t --*                                     (4)              *-->| f(W_d(h_t^f + h_t^b) + b_d) |--> s_t
-      +-----------+          +--------------------+           \     +--------------------------------+             /    +-----------------------------+
-                (2)                             (3)            `--->| f(e_t + W_f x h_{t-1}^f + b_f) |--> h_t^f --'                                 (6)
-                                                                    +--------------------------------+
-                                                                                                   (5)
+
+     +-----------------+
+     | B               |
+   +-----------------+ |                     ,----------.   +------------------------+     +---------+    ,------.
+   | G               | |                     (  I_{b_1} )-->|  CNN_{\theta}(I_{b_1}) |---->| W_m * . |--> (  v_1 )
+ +-----------------+ | |                     (          )   +------------------------+     +---------+    (      )
+ | R               | | |       +------+      (    .     )                .                      .         (  .   )
+ |                 | | | ----> | RCNN | ---> (    .     )                .                      .         (  .   )
+ |                 | | |       +------+      (    .     )                .                      .         (  .   )
+ |      INPUT      | | |                     (          )   +------------------------+     +---------+    (      )
+ |      IMAGE      | |-+                     ( I_{b_20} )-->| CNN_{\theta}(I_{b_20}) |---->| W_m * . |--> ( v_20 )
+ |                 | |                       `----------'   +------------------------+     +---------+    `------'
+ |                 |-+
+ |                 |
+ +-----------------+
+
 ```
-$W_w$, $W_e$, $W_b$, $W_f$ and $W_d$ are learned.  
-$b_e$, $b_b$, $b_f$ and $b_d$ are learned.  
-Figure of the whole pipeline (fig. 3?)
 
-#### 2.3.3. Alignment objective
-$S_{kl} = \sum_{t \in g_l}\sum_{i \in g_k}\max(0, v_i^T s_t)$ (7)  
-$t \in g_l$ is a sentence fragment in sentence $l$.  
-$i \in g_l$ is an image fragment in image $k$.  
---> similarity when vectors are positively aligned.
+#### 2.2.2. Representing sentences (00 min)
+On the other hand, we need to represent the sentences as well. The choice has
+been made to encode them in the same $h$-dimensional embedding space as the images.
 
-$S_{kl} = \sum_{t \in g_l}\max_{i \in g_k}(v_i^T s_t)$ (8)  
-"every word $s_t$ aligns to the single best image region."
+This choice has the advantage we will be able to compare images and sentences, define
+metrics between them, e.g. with the dot product as we will see later in the notebook.
 
-- the max-margin, structured loss:
-$C(\theta) = \sum_k\left[\sum_l\max(0, S_{kl} - S_+{kk} + 1) + \sum_l\max(0, S_{lk} - S_+{kk} + 1)\right]$ (9)  
-sum of rank images + rank sentences.
+To explain this part, I created the following graph showing the flow of information
+across the network:
+```
+        +-----------------------------------------------------------------------------------------------------------------------------------------------------+
+        |                                                                                                                                                     |
+        |                                                                +--------------------------------+                                                   |
+        |                                                           .--->| f(e_t + W_b x h_{t+1}^b + b_b) |--> h_t^b --.                                      |
+        |  +-----------+          +--------------------+           /     +--------------------------------+             \    +-----------------------------+  |
+1_t --->|--| W_m * 1_t |--> x_t --| f(W_e * x_t + b_e) |--> e_t --*                                     (4)              *-->| f(W_d(h_t^f + h_t^b) + b_d) |--|---> s_t
+        |  +-----------+          +--------------------+           \     +--------------------------------+             /    +-----------------------------+  |
+        |            (2)                             (3)            `--->| f(e_t + W_f x h_{t-1}^f + b_f) |--> h_t^f --'                                 (6)  |
+        |                                                                +--------------------------------+                                                   |
+        |------+                                                                                        (5)                                                   |
+        | BRNN |                                                                                                                                              |
+        +-----------------------------------------------------------------------------------------------------------------------------------------------------+
+```
+Some note about the above network flow:
+- the whole network is called a Bidirectional Recurrent Neural Network (BRNN) which takes 1-hot encoding of N words over an alphabet as inputs and spits out $h$-dimensional partial score vector.
+- $W_w$, $W_e$, $W_b$, $W_f$ and $W_d$ are learned weights.
+- $b_e$, $b_b$, $b_f$ and $b_d$ are learned biases.
+- $f$ is the ReLu activation function which is defined, from $\mathbb{R}$ to $\mathbb{R}_{+}$, as $f: x \mapsto \max(0, x)$
 
-#### 2.3.4. Decoding text segment alignments to images
-- generating snippets of text instead of single words.
+#### 2.2.3. Alignment objective (00 min)
+Now that we are able to learn representations for both the input images and their corresponding description
+sentences, we need to define a way to pair them and to give them scores. This is done as in following Figure 3,
+in which one will find the two previous architectures:  
+<img src="res/figure-3.png" height=300>  
+On the left, the image representations are generated thanks to the RCNN onto a latent space.  
+On the right, the sentence representations are generated as well thanks to the BRNN onto the same latent space.  
+Once all of this is computed, we are able to compute the pair-wise scores, i.e. the gray-scale matrix in the middle,
+and then aggregate these scores into the top vector. This can summarized in the below equation:
+- $S_{kl} = \sum_{t \in g_l}\sum_{i \in g_k}\max(0, v_i^T s_t)$ (7)
+  - where $t \in g_l$ is a sentence fragment in sentence $l$.
+  - and $i \in g_l$ is an image fragment in image $k$.
+  - we say that the is a similarity when vectors are positively aligned. That is when the words have a confident support in the image.
+- and the simpler equivalent form: $S_{kl} = \sum_{t \in g_l}\max_{i \in g_k}(v_i^T s_t)$ (8) which makes sure that "every word $s_t$ aligns to the single best image region."
+
+Finally, the max-margin, structured loss is defined as 
+$$C(\theta) = \sum_k\left[\sum_l\max(0, S_{kl} - S_+{kk} + 1) + \sum_l\max(0, S_{lk} - S_+{kk} + 1)\right]$$ (9)  
+It is the general loss used as a learning criterion and can be seen as the sum of rank images plus the sum of rank sentences.
+
+#### 2.2.4. Decoding text segment alignments to images (00 min)
+generating snippets of text instead of single words.
+
 define a Markov Random Field:
 - sentence with N words.
 - image with M bounding boxes.
@@ -144,15 +277,18 @@ define a Markov Random Field:
   - $\psi_j^U(a_j) = v_i^T s_t$ (11)
   - $\psi_j^B(a_j, a_{j+1}) = \beta 1[a_j = a_{j+1}]$ (12)
 
-###  2.4.   Multimodal Recurrent Neural Network for generating descriptions.
-###  2.5.   Optimization.
+###  2.3.   Multimodal Recurrent Neural Network for generating descriptions. (00 min)
+Blah blah Multimodal Recurrent Neural Network for generating descriptions.
+
+###  2.4.   Optimization. (00 min)
+Blah blah Optimization.
 
 
 
-##   3.     Some implementation details.
-###  3.1.   Basic torch initialization.
-###  3.2.   Create a data loader instance.
-###  3.3.   Initialize the networks
+##   3.     Some implementation details. (00 min)
+###  3.1.   Basic torch initialization. (00 min)
+###  3.2.   Create a data loader instance. (00 min)
+###  3.3.   Initialize the networks (00 min)
 - from file
 - from scratch:
   - (1). the language model (`protos.lm`)
@@ -161,7 +297,7 @@ define a Markov Random Field:
   - (4). the language model criterion (`protos.crit`)
   - use clone network to be able to write smaller checkpoints.
 
-###  3.4.   Validation evaluation (`eval_split`)
+###  3.4.   Validation evaluation (`eval_split`) (00 min)
 - (1). fetch a batch of data, pre-process it, do not augment.
 - (2). forward pass :
 ```
@@ -173,7 +309,7 @@ images --| cnn |--> feats --| expander |--> expanded_feats -,-| lm |--> logprobs
 - (3). sample generation samples for each image.
 - (4). return `loss_sum / loss_evals, predictions={(id, caption)}. lang_stats`
 
-###  3.5.   Loss function (`lossFun`)
+###  3.5.   Loss function (`lossFun`) (00 min)
 - (1). forward pass to transform images into "*back-propagatable*" losses.
 ```
          +--------+
@@ -184,7 +320,7 @@ images --| protos |--> loss
 - (3). clip gradients.
 - (4). apply L2 regularization.
 
-###  3.6.   Main loop
+###  3.6.   Main loop (00 min)
 - (1). eval loss and gradients.
 - (2). save checkpoints: opt, iter, loss_history, val_predictions.
 - (3). decay learning rates for `lm` and `cnn` $`\epsilon =2^{-frac{i - i_0}{T}}`$
@@ -194,11 +330,11 @@ images --| protos |--> loss
 
 
 
-##   4.     Experiments.
+##   4.     Experiments. (00 min)
 
 
 
-##   5.     Results on the MSCOCO dataset.
+##   5.     Results on the MSCOCO dataset. (00 min)
 
 
 
@@ -210,6 +346,7 @@ images --| protos |--> loss
 [karpathy2015deep-tmpvideo]: https://youtu.be/e-WB4lfg30M
 [karpathy2015deep-python]:   https://github.com/ruotianluo/neuraltalk2-tensorflow
 [karpathy2015deep-docker]:   https://github.com/SaMnCo/docker-neuraltalk2
+[coco]:                      https://cocodataset.org/#explore
 
 <!-- all the references from the paper -->
 [1]:  https://scholar.google.com/scholar?hl=fr&as_sdt=0%2C5&q=Video+in+sentences+out.&btnG=
